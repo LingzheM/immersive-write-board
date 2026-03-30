@@ -11,7 +11,7 @@ export interface Particle {
 }
 
 // Structural interface — ParticlePool satisfies this without a direct import
-interface ActivePool {
+export interface ActivePool {
   acquire(): Particle | null;
   release(p: Particle): void;
   releaseAll(): void;
