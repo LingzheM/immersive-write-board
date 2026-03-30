@@ -1,3 +1,5 @@
+import type { ParticlePool } from './ParticlePool';
+
 export interface Particle {
   poolIndex: number;  // 在池中的固定索引
   active: boolean;    // 是否激活
