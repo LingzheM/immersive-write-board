@@ -1,5 +1,5 @@
 import { ParticlePool } from '../core/ParticlePool';
-import { WeatherRenderer } from '../core/types';
+import type { WeatherRenderer } from '../core/types';
 
 export class RainRenderer implements WeatherRenderer {
   // 每一帧尝试生成的雨滴数量随 intensity 变化
