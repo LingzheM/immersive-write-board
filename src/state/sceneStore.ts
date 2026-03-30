@@ -1,9 +1,10 @@
 import { create } from 'zustand';
+import type { Season, TimeOfDay, Weather } from '../tokens/sceneTokens';
 
 export interface SceneState {
-  weather: 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'foggy';
-  season: 'spring' | 'summer' | 'autumn' | 'winter';
-  timeOfDay: 'dawn' | 'morning' | 'afternoon' | 'dusk' | 'night';
+  weather: Weather;
+  season: Season;
+  timeOfDay: TimeOfDay;
   manualOverride: boolean;
   writingPhase: 'idle' | 'active' | 'flow';
   setScene: (patch: Partial<Omit<SceneState, 'setScene'>>) => void;
