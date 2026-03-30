@@ -1,0 +1,19 @@
+.atmosphere-root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(135deg, var(--bg-color-a), var(--bg-color-b));
+  transition: background 2.5s ease-in-out; 
+}
+
+.overlay-layer {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, var(--overlay-op));
+  animation: breath var(--breath-dur) ease-in-out infinite;
+}
+
+@keyframes breath {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
