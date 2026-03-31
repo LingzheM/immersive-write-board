@@ -21,9 +21,10 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Set scene to rainy so rain particles are visible
+  // Set scene and initial intensity so rain is immediately visible
   useEffect(() => {
-    useSceneStore.getState().setScene({ weather: 'rainy', season: 'autumn', timeOfDay: 'night' });
+    useSceneStore.getState().setScene({ weather: 'rainy', season: 'spring', timeOfDay: 'dusk' });
+    useWritingStore.getState().setWritingState({ writingIntensity: 0.5 });
   }, []);
 
   return (
