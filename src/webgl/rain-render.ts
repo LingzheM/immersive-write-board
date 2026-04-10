@@ -1,6 +1,6 @@
 import GL from "./gl-obj";
 import createCanvas from "./create-canvas";
-import { VERT as vertShader, FRAG as fragShader } from './shaders';
+import { VERT as vertShader, FRAG as fragShader } from '../shaders';
 
 interface RainRendererOptions {
   renderShadow: boolean;
