@@ -1,4 +1,5 @@
 import RainRenderer from "./rain-render";
+import Raindrops from "./rain-drop";
 import loadImages from "./image-loader";
 import createCanvas from "./create-canvas";
 
@@ -32,26 +33,27 @@ type ImageMap = Record<string, { img: HTMLImageElement }>;
 const imageConfigs: ImageConfig[] = [
   { name: "textureFg", src: "assets/texture-rain-fg.png" },
   { name: "textureBg", src: "assets/texture-rain-bg.png" },
+  // ✅ 新增：雨滴形状（透明度遮罩）和颜色贴图
+  { name: "dropAlpha",  src: "assets/drop-alpha.png" },
+  { name: "dropColor",  src: "assets/drop-color.png" },
 ];
 
 loadImages(imageConfigs).then((images: ImageMap) => {
-
-  // querySelector 返回 Element | null
-  // 用类型断言告诉 TS："我确定这是 HTMLCanvasElement，不是 null"
-  // 如果你不确定页面上一定有这个元素，应该用下面的「安全写法」
   const canvas = document.querySelector<HTMLCanvasElement>("#container");
+  if (!canvas) throw new Error("#container canvas not found");
 
-  // ✅ 安全写法：运行时检查，比类型断言更稳健
-  if (!canvas) {
-    throw new Error("#container canvas element not found in DOM");
-  }
-
-  // 此后 TS 已知 canvas 一定是 HTMLCanvasElement，不再是 null
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  // 空白 canvas 代替水滴（Task 2/3 再换）
-  const blankCanvas: HTMLCanvasElement = createCanvas(canvas.width, canvas.height);
+  // raindrops.canvas 是内部维护的离屏 canvas，每帧由 Raindrops 自己更新
+  // RainRenderer 只负责读取它作为纹理，不需要关心内部细节
+  const raindrops = new Raindrops(
+    canvas.width,
+    canvas.height,
+    1,
+    images.dropAlpha.img,
+    images.dropColor.img
+  )
 
   // fg 纹理 canvas
   const textureFg: HTMLCanvasElement = createCanvas(96, 64);
@@ -65,5 +67,5 @@ loadImages(imageConfigs).then((images: ImageMap) => {
   if (!textureBgCtx) throw new Error("Failed to get 2D context for textureBg");
   textureBgCtx.drawImage(images.textureBg.img, 0, 0, 384, 256);
 
-  new RainRenderer(canvas, blankCanvas, textureFg, textureBg);
+  new RainRenderer(canvas, raindrops.canvas, textureFg, textureBg);
 });
