@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 export function useIdleTimer() {
   const [idleSeconds, setIdleSeconds] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     const resetIdle = () => setIdleSeconds(0);
