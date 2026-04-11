@@ -2,6 +2,7 @@ import RainRenderer from "./rain-render";
 import Raindrops from "./rain-drop";
 import loadImages from "./image-loader";
 import createCanvas from "./create-canvas";
+import { tweenFromTo, type TweenHandle } from "./tween";
 
 // ============================================================
 // 类型定义
@@ -113,80 +114,71 @@ loadImages(imageConfigs).then((images) => {
   // switchWeather
   // ============================================================
 
+  let activeTween: TweenHandle | null = null;
+
   /**
-   * 切换天气：更新纹理 + 雨滴参数
+   * 切换天气：blend.v 从 0→1 动画过渡纹理，同时更新雨滴参数
    *
-   * @param fg             前景纹理图像
-   * @param bg             背景纹理图像
+   * @param fg              目标前景纹理
+   * @param bg              目标背景纹理
    * @param raindropOptions 要覆盖的雨滴参数（只传需要改的字段）
    */
   function switchWeather(
     fg: CanvasImageSource,
     bg: CanvasImageSource,
     raindropOptions: Partial<RaindropOptions>
-    //               ↑
-    // Partial<> 表示每个字段都可选
-    // 只传 { raining: false } 也合法，其余字段保持不变
   ): void {
-    // 1. 更新纹理 canvas 内容
-    generateTextures(textureFgCtx, textureBgCtx, fg, bg);
+    // 中断正在进行的过渡
+    if (activeTween) activeTween.cancelled = true;
 
-    // 2. 通知 WebGL 重新上传纹理到 GPU
-    renderer.updateTextures();
+    // blend.v 从 0→1，每帧把新纹理以递增 alpha 画在旧内容上方
+    activeTween = tweenFromTo(1, 0, 1, (v) => {
+      generateTextures(textureFgCtx!, textureBgCtx!, fg, bg, v);
+      renderer.updateTextures();
+    });
 
-    // 3. 合并雨滴参数（只覆盖传入的字段，其余保持原值）
+    // 雨滴参数立即生效
     Object.assign(raindrops.options, raindropOptions);
-
-    // 4. 清除当前屏幕上的水滴，让新参数生效
     raindrops.clearDrops();
   }
 
   // ============================================================
-  // 按钮绑定
+  // 导航绑定
   // ============================================================
 
-  /**
-   * 安全获取按钮的工具函数
-   * 比每次都写 if(!btn) throw... 更简洁
-   */
-  function getButton(selector: string): HTMLElement {
+  function getNavItem(selector: string): HTMLElement {
     const el = document.querySelector<HTMLElement>(selector);
-    if (!el) throw new Error(`Button not found: ${selector}`);
+    if (!el) throw new Error(`Nav item not found: ${selector}`);
     return el;
   }
 
-  getButton("#btn-rain").onclick = () =>
+  /** 移除所有 .nav-item--current，激活目标 */
+  function setActiveNav(el: HTMLElement): void {
+    document.querySelectorAll(".nav-item").forEach((item) =>
+      item.classList.remove("nav-item--current")
+    );
+    el.classList.add("nav-item--current");
+  }
+
+  const navRain = getNavItem("#btn-rain");
+  navRain.onclick = (e) => {
+    e.preventDefault();
+    setActiveNav(navRain);
     switchWeather(
       textures.textureRainFg.img,
       textures.textureRainBg.img,
       { raining: true, rainChance: 0.35 }
     );
+  };
 
-  getButton("#btn-storm").onclick = () =>
-    switchWeather(
-      textures.textureStormLightningFg.img,
-      textures.textureStormLightningBg.img,
-      { raining: true, rainChance: 0.4, rainLimit: 6, dropletsRate: 80 }
-    );
-
-  getButton("#btn-drizzle").onclick = () =>
-    switchWeather(
-      textures.textureDrizzleFg.img,
-      textures.textureDrizzleBg.img,
-      { raining: true, rainChance: 0.15, rainLimit: 2, dropletsRate: 25 }
-    );
-
-  getButton("#btn-fallout").onclick = () =>
-    switchWeather(
-      textures.textureFalloutFg.img,
-      textures.textureFalloutBg.img,
-      { raining: true, rainChance: 0.35, rainLimit: 3 }
-    );
-
-  getButton("#btn-sun").onclick = () =>
+  const navSun = getNavItem("#btn-sun");
+  navSun.onclick = (e) => {
+    e.preventDefault();
+    setActiveNav(navSun);
     switchWeather(
       textures.textureSunFg.img,
       textures.textureSunBg.img,
       { raining: false, rainChance: 0 }
     );
+  };
 });
