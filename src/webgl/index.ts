@@ -2,183 +2,139 @@ import RainRenderer from "./rain-render";
 import Raindrops from "./rain-drop";
 import loadImages from "./image-loader";
 import createCanvas from "./create-canvas";
-import { tweenFromTo, type TweenHandle } from "./tween";
 
 // ============================================================
 // 类型定义
 // ============================================================
 
-interface ImageConfig {
-  name: string;
-  src: string;
-}
-
-type TextureKey =
-  | "dropAlpha" | "dropColor"
-  | "textureRainFg"           | "textureRainBg"
-  | "textureStormLightningFg" | "textureStormLightningBg"
-  | "textureFalloutFg"        | "textureFalloutBg"
-  | "textureSunFg"            | "textureSunBg"
-  | "textureDrizzleFg"        | "textureDrizzleBg";
-
-type TextureMap = Record<TextureKey, { img: HTMLImageElement }>;
-
-/**
- * switchWeather 的第三个参数：只需传想改的字段
- * Partial<RaindropsOptions> 表示每个字段都可选
- * 直接从 Raindrops 实例的 options 属性推断类型，不需要重复定义
- */
-type RaindropOptions = Raindrops["options"];
+type ImageKey = "dropAlpha" | "dropColor" | "springScene";
+type ImageMap = Record<ImageKey, { img: HTMLImageElement }>;
 
 const textureFgSize = { width: 96,  height: 64  } as const;
 const textureBgSize = { width: 384, height: 256 } as const;
 
 // ============================================================
-// generateTextures
+// createSpringTexture
 // ============================================================
 
-function generateTextures(
-  textureFgCtx: CanvasRenderingContext2D,
-  textureBgCtx: CanvasRenderingContext2D,
-  fg: CanvasImageSource,
-  bg: CanvasImageSource,
-  alpha: number = 1
-): void {
-  textureFgCtx.globalAlpha = alpha;
-  textureFgCtx.drawImage(fg, 0, 0, textureFgSize.width, textureFgSize.height);
+/**
+ * 在图片上叠加色调，返回新的 canvas
+ *
+ * @param sourceImg  原始图像
+ * @param width      输出宽度
+ * @param height     输出高度
+ * @param tint       叠加颜色，格式 "rgba(r,g,b,a)"
+ */
+function createSpringTexture(
+  sourceImg: CanvasImageSource,
+  width: number,
+  height: number,
+  tint: string
+): HTMLCanvasElement {
+  const c = createCanvas(width, height);
+  const ctx = c.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context for spring texture");
 
-  textureBgCtx.globalAlpha = alpha;
-  textureBgCtx.drawImage(bg, 0, 0, textureBgSize.width, textureBgSize.height);
+  // 1. 绘制原图
+  ctx.drawImage(sourceImg, 0, 0, width, height);
+
+  // 2. multiply 模式叠加色调（让图像偏向指定颜色，保留明暗细节）
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, width, height);
+
+  // 3. 恢复默认合成模式，避免影响后续绘制
+  ctx.globalCompositeOperation = "source-over";
+
+  return c;
 }
-
-// ============================================================
-// 图片配置
-// ============================================================
-
-const imageConfigs: ImageConfig[] = [
-  { name: "dropAlpha",              src: "assets/drop-alpha.png" },
-  { name: "dropColor",              src: "assets/drop-color.png" },
-  { name: "textureRainFg",          src: "assets/weather/texture-rain-fg.png" },
-  { name: "textureRainBg",          src: "assets/weather/texture-rain-bg.png" },
-  // { name: "textureStormLightningFg",src: "assets/weather/texture-storm-lightning-fg.png" },
-  // { name: "textureStormLightningBg",src: "assets/weather/texture-storm-lightning-bg.png" },
-  // { name: "textureFalloutFg",       src: "assets/weather/texture-fallout-fg.png" },
-  // { name: "textureFalloutBg",       src: "assets/weather/texture-fallout-bg.png" },
-  { name: "textureSunFg",           src: "assets/weather/texture-sun-fg.png" },
-  { name: "textureSunBg",           src: "assets/weather/texture-sun-bg.png" },
-  // { name: "textureDrizzleFg",       src: "assets/weather/texture-drizzle-fg.png" },
-  // { name: "textureDrizzleBg",       src: "assets/weather/texture-drizzle-bg.png" },
-];
 
 // ============================================================
 // 主逻辑
 // ============================================================
 
-loadImages(imageConfigs).then((images) => {
-  const textures = images as TextureMap;
+loadImages([
+  { name: "dropAlpha",   src: "assets/drop-alpha.png" },
+  { name: "dropColor",   src: "assets/drop-color.png" },
+  { name: "springScene", src: "assets/season/spring/spring.svg" },
+]).then((images) => {
+  const textures = images as ImageMap;
+  const springImg = textures.springScene.img;
 
-  // --- 主 canvas ---
-  const canvas = document.querySelector<HTMLCanvasElement>("#container");
-  if (!canvas) throw new Error("#container canvas not found");
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // --- 背景图 ---
+  const slideshow = document.querySelector<HTMLElement>(".slideshow");
+  if (!slideshow) throw new Error(".slideshow element not found");
+  slideshow.style.backgroundImage =
+    "url(img/season/spring/sakura_layered_composition_v2.svg)";
 
-  // --- 雨滴引擎 ---
-  const raindrops = new Raindrops(
-    canvas.width,
-    canvas.height,
-    1,
-    textures.dropAlpha.img,
-    textures.dropColor.img
-  );
-
-  // --- fg 纹理 canvas ---
+  // --- fg/bg 纹理 canvas ---
   const textureFg    = createCanvas(textureFgSize.width, textureFgSize.height);
   const textureFgCtx = textureFg.getContext("2d");
   if (!textureFgCtx) throw new Error("Failed to get 2D context for textureFg");
 
-  // --- bg 纹理 canvas ---
   const textureBg    = createCanvas(textureBgSize.width, textureBgSize.height);
   const textureBgCtx = textureBg.getContext("2d");
   if (!textureBgCtx) throw new Error("Failed to get 2D context for textureBg");
 
-  // 默认天气：雨
-  generateTextures(
-    textureFgCtx, textureBgCtx,
-    textures.textureRainFg.img, textures.textureRainBg.img
+  // 春调色：fg 偏暖粉（樱花），bg 偏淡黄（阳光透射）
+  const springFg = createSpringTexture(
+    springImg,
+    textureFgSize.width, textureFgSize.height,
+    "rgba(255, 210, 200, 0.4)"
+  );
+  const springBg = createSpringTexture(
+    springImg,
+    textureBgSize.width, textureBgSize.height,
+    "rgba(255, 220, 180, 0.2)"
   );
 
-  const renderer = new RainRenderer(canvas, raindrops.canvas, textureFg, textureBg);
+  textureFgCtx.drawImage(springFg, 0, 0);
+  textureBgCtx.drawImage(springBg, 0, 0);
 
-  // ============================================================
-  // switchWeather
-  // ============================================================
+  // --- 主 canvas（DPI 感知）---
+  const canvas = document.querySelector<HTMLCanvasElement>("#container");
+  if (!canvas) throw new Error("#container canvas not found");
 
-  let activeTween: TweenHandle | null = null;
+  // devicePixelRatio：Retina 屏幕上是 2，普通屏幕是 1
+  // canvas 的实际像素 = 逻辑像素 × dpi，CSS 尺寸保持逻辑像素
+  // 这样在高清屏上渲染不模糊
+  const dpi = window.devicePixelRatio;
+  canvas.width         = window.innerWidth  * dpi;
+  canvas.height        = window.innerHeight * dpi;
+  canvas.style.width   = `${window.innerWidth}px`;
+  canvas.style.height  = `${window.innerHeight}px`;
 
-  /**
-   * 切换天气：blend.v 从 0→1 动画过渡纹理，同时更新雨滴参数
-   *
-   * @param fg              目标前景纹理
-   * @param bg              目标背景纹理
-   * @param raindropOptions 要覆盖的雨滴参数（只传需要改的字段）
-   */
-  function switchWeather(
-    fg: CanvasImageSource,
-    bg: CanvasImageSource,
-    raindropOptions: Partial<RaindropOptions>
-  ): void {
-    // 中断正在进行的过渡
-    if (activeTween) activeTween.cancelled = true;
+  // --- 雨滴引擎（春雨参数）---
+  const raindrops = new Raindrops(
+    canvas.width,
+    canvas.height,
+    dpi,
+    textures.dropAlpha.img,
+    textures.dropColor.img,
+    {
+      minR: 10,
+      maxR: 35,
+      rainChance: 0.25,
+      rainLimit: 4,
+      dropletsRate: 30,
+      dropletsSize:     [2, 4],
+      trailRate: 0.8,
+      trailScaleRange:  [0.2, 0.35],
+      raining: true,
+    }
+  );
 
-    // blend.v 从 0→1，每帧把新纹理以递增 alpha 画在旧内容上方
-    activeTween = tweenFromTo(1, 0, 1, (v) => {
-      generateTextures(textureFgCtx!, textureBgCtx!, fg, bg, v);
-      renderer.updateTextures();
-    });
-
-    // 雨滴参数立即生效
-    Object.assign(raindrops.options, raindropOptions);
-    raindrops.clearDrops();
-  }
-
-  // ============================================================
-  // 导航绑定
-  // ============================================================
-
-  function getNavItem(selector: string): HTMLElement {
-    const el = document.querySelector<HTMLElement>(selector);
-    if (!el) throw new Error(`Nav item not found: ${selector}`);
-    return el;
-  }
-
-  /** 移除所有 .nav-item--current，激活目标 */
-  function setActiveNav(el: HTMLElement): void {
-    document.querySelectorAll(".nav-item").forEach((item) =>
-      item.classList.remove("nav-item--current")
-    );
-    el.classList.add("nav-item--current");
-  }
-
-  const navRain = getNavItem("#btn-rain");
-  navRain.onclick = (e) => {
-    e.preventDefault();
-    setActiveNav(navRain);
-    switchWeather(
-      textures.textureRainFg.img,
-      textures.textureRainBg.img,
-      { raining: true, rainChance: 0.35 }
-    );
-  };
-
-  const navSun = getNavItem("#btn-sun");
-  navSun.onclick = (e) => {
-    e.preventDefault();
-    setActiveNav(navSun);
-    switchWeather(
-      textures.textureSunFg.img,
-      textures.textureSunBg.img,
-      { raining: false, rainChance: 0 }
-    );
-  };
+  // --- WebGL 渲染器（春季微调亮度和透明度）---
+  new RainRenderer(
+    canvas,
+    raindrops.canvas,
+    textureFg,
+    textureBg,
+    null,            // imageShine：无光泽层
+    {
+      brightness:    1.04,  // 略微提亮，模拟春日柔光
+      alphaMultiply: 6,     // 水滴透明度系数（比默认 20 低，更通透）
+      alphaSubtract: 3,     // 透明度偏移（比默认 5 低）
+    }
+  );
 });

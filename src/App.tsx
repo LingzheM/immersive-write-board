@@ -3,6 +3,7 @@ import './App.css';
 
 const App: React.FC = () => (
   <>
+    <div className="slideshow" />
     <canvas id="container" className="app-canvas" />
     <nav className="slideshow__nav">
       <a id="btn-rain" className="nav-item nav-item--current" href="#">
