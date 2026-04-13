@@ -3,6 +3,13 @@ import Raindrops from "./rain-drop";
 import loadImages from "./image-loader";
 import createCanvas from "./create-canvas";
 
+declare global {
+  interface Window {
+    switchToMist?: () => void;
+    switchToSpringRain?: () => void;
+  }
+}
+
 // ============================================================
 // 类型定义
 // ============================================================
@@ -137,4 +144,19 @@ loadImages([
       alphaSubtract: 3,     // 透明度偏移（比默认 5 低）
     }
   );
+
+  // ============================================================
+  // 全局天气切换函数
+  // ============================================================
+
+  window.switchToMist = () => {
+    raindrops.options.raining = false;
+    raindrops.clearDrops();
+    document.querySelector(".mist-overlay")?.classList.add("active");
+  };
+
+  window.switchToSpringRain = () => {
+    raindrops.options.raining = true;
+    document.querySelector(".mist-overlay")?.classList.remove("active");
+  };
 });
